@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
-    "postinstall": "puppeteer install"
+    "postinstall": "npx puppeteer browsers install chrome"
+  },
+  "puppeteer": {
+    "default_browser_revision": "138.0.7204.92"
   },
   "dependencies": {
     "axios": "^1.10.0",
