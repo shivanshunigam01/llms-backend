@@ -9,6 +9,10 @@ const PORT = 3000;
 
 app.use(cors());
 
+app.get("/check", (req, res) => {
+  res.send("✅ Server is running.");
+});
+
 app.post("/generate-llms-txt", async (req, res) => {
   let { url, showFullText } = req.body;
 
