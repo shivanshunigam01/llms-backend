@@ -4,8 +4,7 @@
   "description": "API to generate llms.txt content",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
-    "postinstall": "puppeteer install"
+    "start": "nodemon index.js"
   },
   "dependencies": {
     "axios": "^1.10.0",
