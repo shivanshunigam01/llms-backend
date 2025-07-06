@@ -1,0 +1,19 @@
+{
+  "name": "llms-backend",
+  "version": "1.0.0",
+  "description": "API to generate llms.txt content",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "body-parser": "^1.20.3",
+    "cheerio": "^1.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "node-fetch": "^3.3.2",
+    "nodemon": "^3.1.10",
+    "puppeteer": "^24.11.2"
+  }
+}
