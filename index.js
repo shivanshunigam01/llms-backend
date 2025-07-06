@@ -20,17 +20,17 @@ app.post("/generate-llms-txt", async (req, res) => {
     return res.status(400).json({ success: false, message: "URL is required" });
   }
 
-  //  Normalize the URL
+  // Normalize the URL
   url = url.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   const formattedUrl = `https://${url}`;
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   try {
     const browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath:
-        process.env.PUPPETEER_EXECUTABLE_PATH ||
-        require("puppeteer").executablePath(),
+      executablePath: isProduction ? "/usr/bin/google-chrome" : undefined,
     });
 
     const page = await browser.newPage();
@@ -39,7 +39,6 @@ app.post("/generate-llms-txt", async (req, res) => {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36"
     );
 
-    //  Try navigating to the site (catch domain not found)
     try {
       await page.goto(formattedUrl, {
         waitUntil: "domcontentloaded",
@@ -83,7 +82,6 @@ app.post("/generate-llms-txt", async (req, res) => {
     headings.forEach((h) => (llmsfulltxtRaw += `### ${h}\n`));
     if (showFullText && bodyText) llmsfulltxtRaw += `\n${bodyText}`;
 
-    //  Format the response using <br> instead of \n for clean rendering
     const llmstxtFormatted = llmstxtRaw.replace(/\n/g, "<br>");
     const llmsfulltxtFormatted = showFullText
       ? llmsfulltxtRaw.replace(/\n/g, "<br>")
