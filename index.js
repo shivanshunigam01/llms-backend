@@ -9,7 +9,7 @@ const PORT = 3000;
 
 // ✅ CORS setup
 const allowedOrigins = [
-  "http://localhost:3000", // Local dev
+  "http://localhost:8080", // Local dev
   "https://llms-ai-scribe-ashen.vercel.app", // Deployed frontend (remove trailing slash!)
 ];
 
