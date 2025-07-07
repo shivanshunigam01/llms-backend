@@ -4,7 +4,8 @@
   "description": "API to generate llms.txt content",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "postinstall": "npx puppeteer browsers install chrome"
   },
   "puppeteer": {
