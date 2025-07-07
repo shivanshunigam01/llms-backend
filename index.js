@@ -21,11 +21,10 @@ app.post("/generate-llms-txt", async (req, res) => {
   const formattedUrl = `https://${url}`;
 
   try {
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    console.log("Using Chrome at:", puppeteer.executablePath());
+ const browser = await puppeteer.launch({
+  headless: "new",
+  args: ["--no-sandbox", "--disable-setuid-sandbox"]
+});
 
     const page = await browser.newPage();
 
