@@ -30,7 +30,7 @@ app.post("/generate-llms-txt", async (req, res) => {
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: isProduction ? "/usr/bin/google-chrome" : undefined,
+      // executablePath: isProduction ? "/usr/bin/google-chrome" : undefined,
     });
 
     const page = await browser.newPage();
