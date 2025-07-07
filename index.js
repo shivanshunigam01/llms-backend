@@ -3,12 +3,39 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
 const path = require("path");
+
 const app = express();
-app.use(bodyParser.json());
 const PORT = 3000;
 
-app.use(cors());
+// ✅ CORS setup
+const allowedOrigins = [
+  "http://localhost:3000", // Local dev
+  "https://llms-ai-scribe-ashen.vercel.app", // Deployed frontend (remove trailing slash!)
+];
 
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow server-to-server or Postman calls (no origin)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("CORS not allowed for this origin"));
+      }
+    },
+  })
+);
+
+app.use(bodyParser.json());
+
+// ✅ Chrome path for Render deployment
+const chromePath = path.join(
+  __dirname,
+  ".cache/puppeteer/chrome/linux-138.0.7204.92/chrome-linux64/chrome"
+);
+
+// ✅ Main route
 app.post("/generate-llms-txt", async (req, res) => {
   let { url, showFullText } = req.body;
 
@@ -16,14 +43,10 @@ app.post("/generate-llms-txt", async (req, res) => {
     return res.status(400).json({ success: false, message: "URL is required" });
   }
 
-  //  Normalize the URL
+  // Normalize the URL
   url = url.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   const formattedUrl = `https://${url}`;
 
-  const chromePath = path.join(
-    __dirname,
-    ".cache/puppeteer/chrome/linux-138.0.7204.92/chrome-linux64/chrome"
-  );
   try {
     const browser = await puppeteer.launch({
       headless: "new",
@@ -37,7 +60,6 @@ app.post("/generate-llms-txt", async (req, res) => {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36"
     );
 
-    //  Try navigating to the site (catch domain not found)
     try {
       await page.goto(formattedUrl, {
         waitUntil: "domcontentloaded",
@@ -81,7 +103,6 @@ app.post("/generate-llms-txt", async (req, res) => {
     headings.forEach((h) => (llmsfulltxtRaw += `### ${h}\n`));
     if (showFullText && bodyText) llmsfulltxtRaw += `\n${bodyText}`;
 
-    //  Format the response using <br> instead of \n for clean rendering
     const llmstxtFormatted = llmstxtRaw.replace(/\n/g, "<br>");
     const llmsfulltxtFormatted = showFullText
       ? llmsfulltxtRaw.replace(/\n/g, "<br>")
@@ -105,6 +126,11 @@ app.post("/generate-llms-txt", async (req, res) => {
       },
     });
   }
+});
+
+// ✅ Optional health check route
+app.get("/", (req, res) => {
+  res.send("✅ LLMs backend is running!");
 });
 
 app.listen(PORT, () =>
