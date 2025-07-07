@@ -1,6 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
 const cors = require("cors");
 
 const app = express();
@@ -29,10 +29,9 @@ app.post("/generate-llms-txt", async (req, res) => {
   try {
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: "/usr/bin/google-chrome",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      // executablePath: isProduction ? "/usr/bin/google-chrome" : undefined,
     });
-
     const page = await browser.newPage();
 
     await page.setUserAgent(
