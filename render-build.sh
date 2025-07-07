@@ -1,5 +1,4 @@
 #!/bin/bash
-echo "▶️ Installing dependencies and Chrome for Puppeteer..."
-
+echo "Installing dependencies and Chrome"
 npm install
-npx puppeteer browsers install chrome
+PUPPETEER_CACHE_DIR=.cache/puppeteer npx puppeteer browsers install chrome

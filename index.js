@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
-
+const path = require("path");
 const app = express();
 app.use(bodyParser.json());
 const PORT = 3000;
@@ -20,11 +20,16 @@ app.post("/generate-llms-txt", async (req, res) => {
   url = url.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   const formattedUrl = `https://${url}`;
 
+  const chromePath = path.join(
+    __dirname,
+    ".cache/puppeteer/chrome/linux-138.0.7204.92/chrome-linux64/chrome"
+  );
   try {
- const browser = await puppeteer.launch({
-  headless: "new",
-  args: ["--no-sandbox", "--disable-setuid-sandbox"]
-});
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: chromePath,
+    });
 
     const page = await browser.newPage();
 
