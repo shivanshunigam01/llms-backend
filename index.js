@@ -3,6 +3,9 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
 const path = require("path");
+const axios = require("axios");
+const xml2js = require("xml2js");
+const zlib = require("zlib");
 
 const app = express();
 const PORT = 3000;
@@ -11,11 +14,15 @@ const PORT = 3000;
 const allowedOrigins = [
   "http://localhost:8080", // Local dev
   "https://llms-ai-scribe-ashen.vercel.app", // Deployed frontend (remove trailing slash!)
+  "http://localhost:3000", // Local dev
+  "https://site-map-extractor-seo.vercel.app", // Deployed frontend (remove trailing slash!)
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
+      console.log(origin);
+
       // Allow server-to-server or Postman calls (no origin)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
@@ -124,6 +131,105 @@ app.post("/generate-llms-txt", async (req, res) => {
         success: false,
         message: `Failed to process website: ${err.message}`,
       },
+    });
+  }
+});
+
+// ✅ Sitemap URL extraction route
+app.post("/extract-sitemap-urls", async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || !url.startsWith("http")) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Valid sitemap URL is required" });
+  }
+
+  const parser = new xml2js.Parser({
+    explicitArray: true,
+    ignoreAttrs: true,
+    tagNameProcessors: [xml2js.processors.stripPrefix],
+  });
+
+  const fetchAndParseSitemap = async (sitemapUrl) => {
+    try {
+      const isGz = sitemapUrl.endsWith(".gz");
+      const axiosOptions = {
+        responseType: isGz ? "arraybuffer" : "text",
+      };
+
+      const response = await axios.get(sitemapUrl, axiosOptions);
+      let xmlContent = "";
+
+      if (isGz) {
+        const buffer = Buffer.from(response.data);
+        xmlContent = zlib.gunzipSync(buffer).toString("utf-8");
+      } else {
+        xmlContent = response.data;
+      }
+
+      if (!xmlContent.trim().startsWith("<")) {
+        throw new Error("Response is not valid XML");
+      }
+
+      const result = await parser.parseStringPromise(xmlContent);
+      return result;
+    } catch (err) {
+      console.warn(`⚠️ Failed to fetch/parse: ${sitemapUrl} — ${err.message}`);
+      return null;
+    }
+  };
+
+  try {
+    const rootData = await fetchAndParseSitemap(url);
+    if (!rootData) {
+      return res.status(500).json({
+        success: false,
+        message: "Unable to parse the root sitemap.",
+      });
+    }
+
+    let urls = [];
+
+    // Case 1: Direct sitemap with <urlset>
+    if (rootData.urlset && rootData.urlset.url) {
+      const directUrls = rootData.urlset.url
+        .map((entry) => (entry.loc && entry.loc[0] ? entry.loc[0] : null))
+        .filter(Boolean);
+      urls.push(...directUrls);
+    }
+
+    // Case 2: Sitemap index with <sitemapindex>
+    else if (rootData.sitemapindex && rootData.sitemapindex.sitemap) {
+      const sitemapUrls = rootData.sitemapindex.sitemap
+        .map((entry) => (entry.loc && entry.loc[0] ? entry.loc[0] : null))
+        .filter(Boolean);
+
+      for (const smUrl of sitemapUrls) {
+        const childData = await fetchAndParseSitemap(smUrl);
+        if (childData?.urlset?.url) {
+          const childUrls = childData.urlset.url
+            .map((entry) => (entry.loc && entry.loc[0] ? entry.loc[0] : null))
+            .filter(Boolean);
+          urls.push(...childUrls);
+        }
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "This sitemap does not contain <urlset> or <sitemapindex>",
+      });
+    }
+
+    res.json({
+      success: true,
+      count: urls.length,
+      urls,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Unexpected error: ${error.message}`,
     });
   }
 });
