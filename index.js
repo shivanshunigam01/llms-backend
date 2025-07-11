@@ -16,6 +16,7 @@ const allowedOrigins = [
   "https://llms-ai-scribe-ashen.vercel.app", // Deployed frontend (remove trailing slash!)
   "http://localhost:3000", // Local dev
   "https://site-map-extractor-seo.vercel.app", // Deployed frontend (remove trailing slash!)
+  "https://robots-validator-inspector-tool.vercel.app", // Deployed frontend (remove trailing slash!)
 ];
 
 app.use(
