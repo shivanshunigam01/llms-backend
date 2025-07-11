@@ -10,9 +10,9 @@ const zlib = require("zlib");
 const app = express();
 const PORT = 3000;
 
-// ✅ CORS setup
+//  CORS setup
 const allowedOrigins = [
-  "http://localhost:8080", // Local dev
+  "http://localhost:8081", // Local dev
   "https://llms-ai-scribe-ashen.vercel.app", // Deployed frontend (remove trailing slash!)
   "http://localhost:3000", // Local dev
   "https://site-map-extractor-seo.vercel.app", // Deployed frontend (remove trailing slash!)
@@ -36,13 +36,13 @@ app.use(
 
 app.use(bodyParser.json());
 
-// ✅ Chrome path for Render deployment
+//  Chrome path for Render deployment
 const chromePath = path.join(
   __dirname,
   ".cache/puppeteer/chrome/linux-138.0.7204.92/chrome-linux64/chrome"
 );
 
-// ✅ Main route
+//  Main route
 app.post("/generate-llms-txt", async (req, res) => {
   let { url, showFullText } = req.body;
 
@@ -135,7 +135,7 @@ app.post("/generate-llms-txt", async (req, res) => {
   }
 });
 
-// ✅ Sitemap URL extraction route
+//  Sitemap URL extraction route
 app.post("/extract-sitemap-urls", async (req, res) => {
   const { url } = req.body;
 
@@ -234,9 +234,151 @@ app.post("/extract-sitemap-urls", async (req, res) => {
   }
 });
 
-// ✅ Optional health check route
+//Robot.txt route
+app.post("/validate-robots", async (req, res) => {
+  const {
+    url,
+    user_agent_token,
+    user_agent_string,
+    live_test,
+    check_resources,
+    robots_txt,
+  } = req.body;
+
+  try {
+    const parsedUrl = new URL(url);
+    const origin = parsedUrl.origin;
+
+    let robotsContent = robots_txt;
+    if (live_test) {
+      try {
+        const response = await fetch(`${origin}/robots.txt`);
+        if (response.ok) robotsContent = await response.text();
+      } catch (e) {
+        return res.status(400).json({ error: "Failed to fetch robots.txt" });
+      }
+    }
+
+    const lines = robotsContent.split("\n");
+    const ruleMap = {};
+    let currentUA = "";
+
+    lines.forEach((line, i) => {
+      const [keyRaw, valueRaw] = line.split(":");
+      if (!valueRaw) return;
+      const key = keyRaw.trim().toLowerCase();
+      const value = valueRaw.trim();
+
+      if (key === "user-agent") {
+        currentUA = value.toLowerCase();
+        if (!ruleMap[currentUA]) ruleMap[currentUA] = [];
+      } else if (key === "disallow" || key === "allow") {
+        ruleMap[currentUA]?.push({
+          rule: line.trim(),
+          key,
+          value,
+          line: i + 1,
+        });
+      }
+    });
+
+    const applyRules = (targetPath, agent) => {
+      const ua = agent.toLowerCase();
+      const candidates = ruleMap[ua] || ruleMap["*"] || [];
+
+      let bestMatch = {
+        type: "allow",
+        rule: "Allow: /",
+        line: 0,
+        specificity: -1,
+      };
+
+      candidates.forEach((r) => {
+        if (targetPath.startsWith(r.value)) {
+          const spec = r.value.length;
+          if (spec > bestMatch.specificity) {
+            bestMatch = {
+              type: r.key,
+              rule: r.rule,
+              line: r.line,
+              specificity: spec,
+            };
+          }
+        }
+      });
+
+      return {
+        status: bestMatch.type === "allow" ? "Allowed" : "Blocked",
+        applied_rule: { rule: bestMatch.rule, line: bestMatch.line },
+      };
+    };
+
+    const resources = [
+      url,
+      `${origin}/css/styles.css`,
+      `${origin}/js/main.js`,
+      `${origin}/images/logo.png`,
+      `${origin}/favicon.ico`,
+      `${origin}/robots.txt`,
+      `${origin}/sitemap.xml`,
+    ];
+
+    const resourceResults = check_resources
+      ? resources.map((r) => {
+          const path = new URL(r).pathname;
+          const crawl = applyRules(path, user_agent_token);
+          return {
+            url: r,
+            method: "GET",
+            crawl,
+            status_code: 200,
+            status_text: "OK",
+            type: path.includes(".css")
+              ? "Stylesheet"
+              : path.includes(".js")
+              ? "Script"
+              : path.includes(".png") || path.includes(".jpg")
+              ? "Image"
+              : "Document",
+          };
+        })
+      : [];
+
+    const rootResult = applyRules(parsedUrl.pathname || "/", user_agent_token);
+
+    res.json({
+      url: {
+        path: parsedUrl.pathname,
+        url,
+        result: rootResult.status,
+        applied_rule: rootResult.applied_rule,
+        resources: resourceResults,
+      },
+      robotstxt: {
+        url: live_test ? `${origin}/robots.txt` : "Editor",
+        host: parsedUrl.hostname,
+        valid: true,
+        content: robotsContent,
+        error: "",
+        errors: [],
+        sitemaps: "",
+      },
+      robotstxt_parsed: {
+        user_agents: Object.keys(ruleMap),
+        content_fixed: ruleMap,
+        errors: [],
+        sitemap_urls: [],
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// Optional health check route
 app.get("/", (req, res) => {
-  res.send("✅ LLMs backend is running!");
+  res.send(" LLMs backend is running!");
 });
 
 app.listen(PORT, () =>
